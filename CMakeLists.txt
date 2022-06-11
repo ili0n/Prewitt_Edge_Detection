@@ -14,8 +14,8 @@ add_executable(Linux
         EasyBMP_DataStructures.h
         EasyBMP_VariousBMPutilities.h
         main.cpp)
+target_link_libraries(Linux
+        TBB::tbb
+        )
 list(APPEND CMAKE_MODULE_PATH "deps/tbb/cmake/")
-
-ADD_DEFINITIONS(-DQT_NO_KEYWORDS)
-
 find_package(TBB REQUIRED)
