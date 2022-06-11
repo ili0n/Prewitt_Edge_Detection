@@ -23,9 +23,10 @@ int filterVer[FILTER_SIZE * FILTER_SIZE] = {-1, -1, -1, 0, 0, 0, 1, 1, 1};
 
 void filter_serial_prewitt(int *inBuffer, int *outBuffer, int width, int height)  //TODO obrisati
 {
-    int filter_x[3][3] = {{-1, 0, -1},
+    int filter_x[3][3] = {{-1, 0, 1},
                           {-1, 0, 1},
                           {-1, 0, 1}};
+
     int filter_y[3][3] = {{-1, -1, -1},
                           {0,  0,  0},
                           {1,  1,  1}};
@@ -47,7 +48,10 @@ void filter_serial_prewitt(int *inBuffer, int *outBuffer, int width, int height)
                 }
 
             }
-            outBuffer[i + j * width] = sqrt(pow(color_x, 2) + pow(color_y, 2));
+            if (sqrt(pow(color_x, 2) + pow(color_y, 2)) >= 128)
+                outBuffer[i + j * width] = 255;
+            else
+                outBuffer[i + j * width] = 0;
 
 
         }
