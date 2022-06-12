@@ -2,10 +2,12 @@
 #include <stdlib.h>
 #include "BitmapRawConverter.h"
 #include "tbb/task_group.h"
+#include "tbb/tick_count.h"
 
 #define __ARG_NUM__                6
 #define FILTER_SIZE                3
 #define THRESHOLD                128
+#define cutoff                    32
 
 using namespace std;
 
@@ -17,8 +19,11 @@ int filterVer[FILTER_SIZE * FILTER_SIZE] = {-1, -1, -1, 0, 0, 0, 1, 1, 1};
 * @brief Serial version of edge detection algorithm implementation using Prewitt operator
 * @param inBuffer buffer of input image
 * @param outBuffer buffer of output image
-* @param width image width
-* @param height image height
+* @param start_width first width index to start
+* @param start_height first height index to start
+* @param stop_width last width index to start
+* @param start_height last height index to start
+* @param full_width image width
 **/
 
 void calculate_filter(int *inBuffer, int *outBuffer, int start_width, int start_height, int stop_width, int stop_height,
@@ -57,13 +62,23 @@ void calculate_filter(int *inBuffer, int *outBuffer, int start_width, int start_
     }
 }
 
-void filter_serial_prewitt(int *inBuffer, int *outBuffer, int width, int height)  //TODO obrisati
-{
-    calculate_filter(inBuffer,outBuffer,1,1,width-1,height-1,width);
+void filter_serial_prewitt(int *inBuffer, int *outBuffer, int width, int height) {
+    calculate_filter(inBuffer, outBuffer, 1, 1, width - 1, height - 1, width);
 }
 
+
+/**
+* @brief Serial version of edge detection algorithm
+* @param inBuffer buffer of input image
+* @param outBuffer buffer of output image
+* @param start_width first width index to start
+* @param start_height first height index to start
+* @param stop_width last width index to start
+* @param start_height last height index to start
+* @param full_width image width
+**/
 void calculate_edge(int *inBuffer, int *outBuffer, int start_width, int start_height, int stop_width, int stop_height,
-                    int full_width){
+                    int full_width) {
     for (int i = start_width; i < stop_width; ++i) {
         for (int j = start_height; j < stop_height; ++j) {
             double o = 1;
@@ -71,13 +86,13 @@ void calculate_edge(int *inBuffer, int *outBuffer, int start_width, int start_he
 
             for (int k = -1; k < 2; ++k) {
                 for (int l = -1; l < 2; ++l) {
-                    if (k==0&&l==0) continue;
-                    int xn = i + k ;
+                    if (k == 0 && l == 0) continue;
+                    int xn = i + k;
                     int yn = j + l;
                     int index = xn + yn * full_width;
-                    if (inBuffer[index] > 128) p=1;
+                    if (inBuffer[index] > 128) p = 1;
                     else
-                        o=0;
+                        o = 0;
                 }
             }
 
@@ -93,21 +108,23 @@ void calculate_edge(int *inBuffer, int *outBuffer, int start_width, int start_he
 }
 
 
-
 /**
 * @brief Parallel version of edge detection algorithm implementation using Prewitt operator
 * 
 * @param inBuffer buffer of input image
 * @param outBuffer buffer of output image
-* @param width image width
-* @param height image height
+* @param start_width first width index to start
+* @param start_height first height index to start
+* @param stop_width last width index to start
+* @param start_height last height index to start
+* @param full_width image width
 */
 void filter_parallel_prewitt(int *inBuffer, int *outBuffer, int start_width, int start_height, int stop_width,
                              int stop_height, int full_width) {
     tbb::task_group g;
     int middle_width = start_width + (stop_width - start_width) / 2;
     int middle_height = start_height + (stop_height - start_height) / 2;
-    if ((stop_height - start_height) > THRESHOLD) {
+    if ((stop_height - start_height) > cutoff) {
         // 1
         g.run([=]() {
             filter_parallel_prewitt(inBuffer, outBuffer, start_width, start_height, middle_width, middle_height,
@@ -141,44 +158,45 @@ void filter_parallel_prewitt(int *inBuffer, int *outBuffer, int start_width, int
 * @param width image width
 * @param height image height
 */
-void filter_serial_edge_detection(int *inBuffer, int *outBuffer, int width, int height)    //TODO obrisati
-{
-    calculate_edge(inBuffer,outBuffer,1,1,width-1,height-1,width);
+void filter_serial_edge_detection(int *inBuffer, int *outBuffer, int width, int height) {
+    calculate_edge(inBuffer, outBuffer, 1, 1, width - 1, height - 1, width);
 }
 
 /**
 * @brief Parallel version of edge detection algorithm
-* 
 * @param inBuffer buffer of input image
 * @param outBuffer buffer of output image
-* @param width image width
-* @param height image height
+* @param start_width first width index to start
+* @param start_height first height index to start
+* @param stop_width last width index to start
+* @param start_height last height index to start
+* @param full_width image width
 */
 void filter_parallel_edge_detection(int *inBuffer, int *outBuffer, int start_width, int start_height, int stop_width,
                                     int stop_height, int full_width) {
     tbb::task_group g;
     int middle_width = start_width + (stop_width - start_width) / 2;
     int middle_height = start_height + (stop_height - start_height) / 2;
-    if ((stop_height - start_height) > THRESHOLD) {
+    if ((stop_height - start_height) > cutoff) {
         // 1
         g.run([=]() {
             filter_parallel_edge_detection(inBuffer, outBuffer, start_width, start_height, middle_width, middle_height,
-                                    full_width);
+                                           full_width);
         });
         // 2
         g.run([=]() {
             filter_parallel_edge_detection(inBuffer, outBuffer, middle_width, start_height, stop_width, middle_height,
-                                    full_width);
+                                           full_width);
         });
         // 3
         g.run([=]() {
             filter_parallel_edge_detection(inBuffer, outBuffer, start_width, middle_height,
-                                    middle_width, stop_height, full_width);
+                                           middle_width, stop_height, full_width);
         });
         // 4
         g.run([=]() {
             filter_parallel_edge_detection(inBuffer, outBuffer, middle_width, middle_height, stop_width, stop_height,
-                                    full_width);
+                                           full_width);
         });
         g.wait();
     } else {
@@ -201,31 +219,44 @@ void filter_parallel_edge_detection(int *inBuffer, int *outBuffer, int start_wid
 void run_test_nr(int testNr, BitmapRawConverter *ioFile, char *outFileName, int *outBuffer, unsigned int width,
                  unsigned int height) {
 
-    // TODO: start measure
 
+    tbb::tick_count start_time;
+    tbb::tick_count stop_time;
 
     switch (testNr) {
         case 1:
             cout << "Running serial version of edge detection using Prewitt operator" << endl;
+            start_time = tbb::tick_count::now();
             filter_serial_prewitt(ioFile->getBuffer(), outBuffer, width, height);
+            stop_time = tbb::tick_count::now();
+            cout << "Time lasted: " << (stop_time - start_time).seconds() * 1000 << "ms\n";
             break;
         case 2:
             cout << "Running parallel version of edge detection using Prewitt operator" << endl;
-            filter_parallel_prewitt(ioFile->getBuffer(), outBuffer, 1, 1, width-1, height-1, width);
+            start_time = tbb::tick_count::now();
+            filter_parallel_prewitt(ioFile->getBuffer(), outBuffer, 1, 1, width - 1, height - 1, width);
+            stop_time = tbb::tick_count::now();
+            cout << "Time lasted: " << (stop_time - start_time).seconds() * 1000 << "ms\n";
             break;
         case 3:
             cout << "Running serial version of edge detection" << endl;
+            start_time = tbb::tick_count::now();
             filter_serial_edge_detection(ioFile->getBuffer(), outBuffer, width, height);
+            stop_time = tbb::tick_count::now();
+            cout << "Time lasted: " << (stop_time - start_time).seconds() * 1000 << "ms\n";
             break;
         case 4:
             cout << "Running parallel version of edge detection" << endl;
-            filter_parallel_edge_detection(ioFile->getBuffer(), outBuffer, 1, 1, width-1, height-1, width);
+            start_time = tbb::tick_count::now();
+            filter_parallel_edge_detection(ioFile->getBuffer(), outBuffer, 1, 1, width - 1, height - 1, width);
+            stop_time = tbb::tick_count::now();
+            cout << "Time lasted: " << (stop_time - start_time).seconds() * 1000 << "ms\n";
             break;
         default:
             cout << "ERROR: invalid test case, must be 1, 2, 3 or 4!";
             break;
     }
-    // TODO: end measure and display time
+
     ioFile->setBuffer(outBuffer);
     ioFile->pixelsToBitmap(outFileName);
 }
