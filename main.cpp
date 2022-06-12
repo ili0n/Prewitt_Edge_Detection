@@ -59,40 +59,37 @@ void calculate_filter(int *inBuffer, int *outBuffer, int start_width, int start_
 
 void filter_serial_prewitt(int *inBuffer, int *outBuffer, int width, int height)  //TODO obrisati
 {
-//    int filter_x[3][3] = {{-1, 0, 1},
-//                          {-1, 0, 1},
-//                          {-1, 0, 1}};
-//
-//    int filter_y[3][3] = {{-1, -1, -1},
-//                          {0,  0,  0},
-//                          {1,  1,  1}};
-//
-//    for (int i = 1; i < width - 1; ++i) {
-//        for (int j = 1; j < height - 1; ++j) {
-//            double color_x = 0;
-//            double color_y = 0;
-//            for (int k = 0; k < 3; ++k) {
-//                for (int l = 0; l < 3; ++l) {
-//                    int xn = i + k - 1;
-//                    int yn = j + l - 1;
-//
-//                    int index = xn + yn * width;
-//                    color_x += inBuffer[index] * filter_x[k][l];
-//                    color_y += inBuffer[index] * filter_y[k][l];
-//
-//
-//                }
-//
-//            }
-//            if (abs(color_y) + abs(color_x) >= 128)
-//                outBuffer[i + j * width] = 255;
-//            else
-//                outBuffer[i + j * width] = 0;
-//
-//
-//        }
-//    }
     calculate_filter(inBuffer,outBuffer,1,1,width-1,height-1,width);
+}
+
+void calculate_edge(int *inBuffer, int *outBuffer, int start_width, int start_height, int stop_width, int stop_height,
+                    int full_width){
+    for (int i = start_width; i < stop_width; ++i) {
+        for (int j = start_height; j < stop_height; ++j) {
+            double o = 1;
+            double p = 0;
+
+            for (int k = -1; k < 2; ++k) {
+                for (int l = -1; l < 2; ++l) {
+                    if (k==0&&l==0) continue;
+                    int xn = i + k ;
+                    int yn = j + l;
+                    int index = xn + yn * full_width;
+                    if (inBuffer[index] > 128) p=1;
+                    else
+                        o=0;
+                }
+            }
+
+
+            if (abs(o - p) == 1)
+                outBuffer[i + j * full_width] = 255;
+            else
+                outBuffer[i + j * full_width] = 0;
+
+        }
+    }
+
 }
 
 
@@ -146,6 +143,7 @@ void filter_parallel_prewitt(int *inBuffer, int *outBuffer, int start_width, int
 */
 void filter_serial_edge_detection(int *inBuffer, int *outBuffer, int width, int height)    //TODO obrisati
 {
+    calculate_edge(inBuffer,outBuffer,1,1,width-1,height-1,width);
 }
 
 /**
@@ -156,7 +154,36 @@ void filter_serial_edge_detection(int *inBuffer, int *outBuffer, int width, int 
 * @param width image width
 * @param height image height
 */
-void filter_parallel_edge_detection(int *inBuffer, int *outBuffer, int width, int height) {
+void filter_parallel_edge_detection(int *inBuffer, int *outBuffer, int start_width, int start_height, int stop_width,
+                                    int stop_height, int full_width) {
+    tbb::task_group g;
+    int middle_width = start_width + (stop_width - start_width) / 2;
+    int middle_height = start_height + (stop_height - start_height) / 2;
+    if ((stop_height - start_height) > THRESHOLD) {
+        // 1
+        g.run([=]() {
+            filter_parallel_edge_detection(inBuffer, outBuffer, start_width, start_height, middle_width, middle_height,
+                                    full_width);
+        });
+        // 2
+        g.run([=]() {
+            filter_parallel_edge_detection(inBuffer, outBuffer, middle_width, start_height, stop_width, middle_height,
+                                    full_width);
+        });
+        // 3
+        g.run([=]() {
+            filter_parallel_edge_detection(inBuffer, outBuffer, start_width, middle_height,
+                                    middle_width, stop_height, full_width);
+        });
+        // 4
+        g.run([=]() {
+            filter_parallel_edge_detection(inBuffer, outBuffer, middle_width, middle_height, stop_width, stop_height,
+                                    full_width);
+        });
+        g.wait();
+    } else {
+        calculate_edge(inBuffer, outBuffer, start_width, start_height, stop_width, stop_height, full_width);
+    }
 }
 
 /**
@@ -192,7 +219,7 @@ void run_test_nr(int testNr, BitmapRawConverter *ioFile, char *outFileName, int 
             break;
         case 4:
             cout << "Running parallel version of edge detection" << endl;
-            filter_parallel_edge_detection(ioFile->getBuffer(), outBuffer, width, height);
+            filter_parallel_edge_detection(ioFile->getBuffer(), outBuffer, 1, 1, width-1, height-1, width);
             break;
         default:
             cout << "ERROR: invalid test case, must be 1, 2, 3 or 4!";
@@ -206,10 +233,11 @@ void run_test_nr(int testNr, BitmapRawConverter *ioFile, char *outFileName, int 
 int main(int argc, char *argv[]) {
 
     BitmapRawConverter inputFile("../color.bmp");
-    BitmapRawConverter outputFileSerialPrewitt("../color1.bmp");
-    BitmapRawConverter outputFileParallelPrewitt("../color2.bmp");
+    BitmapRawConverter outputFileSerialPrewitt("../color.bmp");
+    BitmapRawConverter outputFileParallelPrewitt("../color.bmp");
     BitmapRawConverter outputFileSerialEdge("../color.bmp");
     BitmapRawConverter outputFileParallelEdge("../color.bmp");
+
 
     unsigned int width, height;
 
@@ -236,11 +264,11 @@ int main(int argc, char *argv[]) {
     // parallel version Prewitt
     run_test_nr(2, &outputFileParallelPrewitt, "../color2.bmp", outBufferParallelPrewitt, width, height);
 
-//    // serial version special
-//    run_test_nr(3, &outputFileSerialEdge, argv[4], outBufferSerialEdge, width, height);
-//
+    // serial version special
+    run_test_nr(3, &outputFileSerialEdge, "../color3.bmp", outBufferSerialEdge, width, height);
+
 //    // parallel version special
-//    run_test_nr(4, &outputFileParallelEdge, argv[5], outBufferParallelEdge, width, height);
+    run_test_nr(4, &outputFileParallelEdge, "../color4.bmp", outBufferParallelEdge, width, height);
 
     // verification
     cout << "Verification: ";
