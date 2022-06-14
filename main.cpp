@@ -8,6 +8,7 @@
 #define FILTER_SIZE                3
 #define THRESHOLD                128
 #define cutoff                    32
+#define edge_width                 2
 
 using namespace std;
 
@@ -84,8 +85,8 @@ void calculate_edge(int *inBuffer, int *outBuffer, int start_width, int start_he
             double o = 1;
             double p = 0;
 
-            for (int k = -1; k < 2; ++k) {
-                for (int l = -1; l < 2; ++l) {
+            for (int k = -edge_width; k < edge_width+1; ++k) {
+                for (int l = -edge_width; l < edge_width+1; ++l) {
                     if (k == 0 && l == 0) continue;
                     int xn = i + k;
                     int yn = j + l;
@@ -159,7 +160,7 @@ void filter_parallel_prewitt(int *inBuffer, int *outBuffer, int start_width, int
 * @param height image height
 */
 void filter_serial_edge_detection(int *inBuffer, int *outBuffer, int width, int height) {
-    calculate_edge(inBuffer, outBuffer, 1, 1, width - 1, height - 1, width);
+    calculate_edge(inBuffer, outBuffer, edge_width, edge_width, width - edge_width, height - edge_width, width);
 }
 
 /**
@@ -248,7 +249,7 @@ void run_test_nr(int testNr, BitmapRawConverter *ioFile, char *outFileName, int 
         case 4:
             cout << "Running parallel version of edge detection" << endl;
             start_time = tbb::tick_count::now();
-            filter_parallel_edge_detection(ioFile->getBuffer(), outBuffer, 1, 1, width - 1, height - 1, width);
+            filter_parallel_edge_detection(ioFile->getBuffer(), outBuffer, edge_width, edge_width, width - edge_width, height - edge_width, width);
             stop_time = tbb::tick_count::now();
             cout << "Time lasted: " << (stop_time - start_time).seconds() * 1000 << "ms\n";
             break;
