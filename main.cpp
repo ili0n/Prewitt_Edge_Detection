@@ -10,11 +10,14 @@
 #define cutoff                    32
 #define edge_width                 2
 
+
 using namespace std;
 
 // Prewitt operators
 int filterHor[FILTER_SIZE * FILTER_SIZE] = {-1, 0, 1, -1, 0, 1, -1, 0, 1};
 int filterVer[FILTER_SIZE * FILTER_SIZE] = {-1, -1, -1, 0, 0, 0, 1, 1, 1};
+string input;
+int filter_size = 3;
 
 /**
 * @brief Serial version of edge detection algorithm implementation using Prewitt operator
@@ -37,12 +40,25 @@ void calculate_filter(int *inBuffer, int *outBuffer, int start_width, int start_
                           {0,  0,  0},
                           {1,  1,  1}};
 
+//    int filter_x[5][5] = {{-1, 0, 0, 0, 1},
+//                          {-1, 0, 0, 0, 1},
+//                          {-1, 0, 0, 0, 1},
+//                          {-1, 0, 0, 0, 1},
+//                          {-1, 0, 0, 0, 1}};
+//
+//    int filter_y[5][5] = {{-1, -1, -1, -1, -1},
+//                          {0,  0,  0,  0,  0},
+//                          {0,  0,  0,  0,  0},
+//                          {0,  0,  0,  0,  0},
+//                          {1,  1,  1,  1,  1}};
+
+
     for (int i = start_width; i < stop_width; ++i) {
         for (int j = start_height; j < stop_height; ++j) {
             double color_x = 0;
             double color_y = 0;
-            for (int k = 0; k < 3; ++k) {
-                for (int l = 0; l < 3; ++l) {
+            for (int k = 0; k < filter_size; ++k) {
+                for (int l = 0; l < filter_size; ++l) {
                     int xn = i + k - 1;
                     int yn = j + l - 1;
 
@@ -64,7 +80,7 @@ void calculate_filter(int *inBuffer, int *outBuffer, int start_width, int start_
 }
 
 void filter_serial_prewitt(int *inBuffer, int *outBuffer, int width, int height) {
-    calculate_filter(inBuffer, outBuffer, 1, 1, width - 1, height - 1, width);
+    calculate_filter(inBuffer, outBuffer, 1, 1, width - filter_size / 2 - 1, height - filter_size / 2 - 1, width);
 }
 
 
@@ -85,8 +101,8 @@ void calculate_edge(int *inBuffer, int *outBuffer, int start_width, int start_he
             double o = 1;
             double p = 0;
 
-            for (int k = -edge_width; k < edge_width+1; ++k) {
-                for (int l = -edge_width; l < edge_width+1; ++l) {
+            for (int k = -edge_width; k < edge_width + 1; ++k) {
+                for (int l = -edge_width; l < edge_width + 1; ++l) {
                     if (k == 0 && l == 0) continue;
                     int xn = i + k;
                     int yn = j + l;
@@ -235,7 +251,7 @@ void run_test_nr(int testNr, BitmapRawConverter *ioFile, char *outFileName, int 
         case 2:
             cout << "Running parallel version of edge detection using Prewitt operator" << endl;
             start_time = tbb::tick_count::now();
-            filter_parallel_prewitt(ioFile->getBuffer(), outBuffer, 1, 1, width - 1, height - 1, width);
+            filter_parallel_prewitt(ioFile->getBuffer(), outBuffer, 1, 1, width - filter_size/2-1, height - filter_size/2-1, width);
             stop_time = tbb::tick_count::now();
             cout << "Time lasted: " << (stop_time - start_time).seconds() * 1000 << "ms\n";
             break;
@@ -249,7 +265,8 @@ void run_test_nr(int testNr, BitmapRawConverter *ioFile, char *outFileName, int 
         case 4:
             cout << "Running parallel version of edge detection" << endl;
             start_time = tbb::tick_count::now();
-            filter_parallel_edge_detection(ioFile->getBuffer(), outBuffer, edge_width, edge_width, width - edge_width, height - edge_width, width);
+            filter_parallel_edge_detection(ioFile->getBuffer(), outBuffer, edge_width, edge_width, width - edge_width,
+                                           height - edge_width, width);
             stop_time = tbb::tick_count::now();
             cout << "Time lasted: " << (stop_time - start_time).seconds() * 1000 << "ms\n";
             break;
