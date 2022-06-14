@@ -8,7 +8,7 @@
 #define FILTER_SIZE                3
 #define THRESHOLD                128
 #define cutoff                    32
-#define edge_width                 2
+#define edge_width                 1
 
 
 using namespace std;
@@ -16,8 +16,7 @@ using namespace std;
 // Prewitt operators
 int filterHor[FILTER_SIZE * FILTER_SIZE] = {-1, 0, 1, -1, 0, 1, -1, 0, 1};
 int filterVer[FILTER_SIZE * FILTER_SIZE] = {-1, -1, -1, 0, 0, 0, 1, 1, 1};
-string input;
-int filter_size = 3;
+int filter_size = 5;
 
 /**
 * @brief Serial version of edge detection algorithm implementation using Prewitt operator
@@ -32,27 +31,31 @@ int filter_size = 3;
 
 void calculate_filter(int *inBuffer, int *outBuffer, int start_width, int start_height, int stop_width, int stop_height,
                       int full_width) {
-    int filter_x[3][3] = {{-1, 0, 1},
-                          {-1, 0, 1},
-                          {-1, 0, 1}};
 
-    int filter_y[3][3] = {{-1, -1, -1},
-                          {0,  0,  0},
-                          {1,  1,  1}};
-
-//    int filter_x[5][5] = {{-1, 0, 0, 0, 1},
-//                          {-1, 0, 0, 0, 1},
-//                          {-1, 0, 0, 0, 1},
-//                          {-1, 0, 0, 0, 1},
-//                          {-1, 0, 0, 0, 1}};
+//    int filter_x[3][3] = {{-1, 0, 1},
+//                          {-1, 0, 1},
+//                          {-1, 0, 1}};
 //
-//    int filter_y[5][5] = {{-1, -1, -1, -1, -1},
-//                          {0,  0,  0,  0,  0},
-//                          {0,  0,  0,  0,  0},
-//                          {0,  0,  0,  0,  0},
-//                          {1,  1,  1,  1,  1}};
+//    int filter_y[3][3] = {{-1, -1, -1},
+//                          {0,  0,  0},
+//                          {1,  1,  1}};
+
+//    if (filter_size == 5) {
+
+    int filter_x[5][5] = {{-1, 0, 0, 0, 1},
+                          {-1, 0, 0, 0, 1},
+                          {-1, 0, 0, 0, 1},
+                          {-1, 0, 0, 0, 1},
+                          {-1, 0, 0, 0, 1}};
+
+    int filter_y[5][5] = {{-1, -1, -1, -1, -1},
+                          {0,  0,  0,  0,  0},
+                          {0,  0,  0,  0,  0},
+                          {0,  0,  0,  0,  0},
+                          {1,  1,  1,  1,  1}};
 
 
+//    }
     for (int i = start_width; i < stop_width; ++i) {
         for (int j = start_height; j < stop_height; ++j) {
             double color_x = 0;
@@ -287,6 +290,15 @@ int main(int argc, char *argv[]) {
     BitmapRawConverter outputFileSerialEdge("../color.bmp");
     BitmapRawConverter outputFileParallelEdge("../color.bmp");
 
+
+//    cout<<"Selecte Filter dimensions:\n0 3x3\n1 5x5\n";
+//    cin>>input;
+//    if (input[0] !='0' && input[0] !='1'){
+//        cout<<"InvalidInput\n";
+//        exit(-2);
+//    }
+//    if (input[0] =='0') filter_size =3;
+//    else filter_size =5;
 
     unsigned int width, height;
 
